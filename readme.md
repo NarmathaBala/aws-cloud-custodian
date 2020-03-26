@@ -1,10 +1,17 @@
 # AWS Cloud Custodian (c7n)
 
+---
+
+# Read blog for more info:
+https://www.linkedin.com/pulse/aws-cloud-custodian-varun-tomar/
+
+---
+
 **Why we chose c7n**
 
 Cloud Custodian is an open source tool to bring automated governance, security, compliance, and cost optimization to cloud environments. 
 
-Cloud Custodian has following key features:
+Cloud Custodian provides the following features:
 
 - Ensure real-time compliance.
 
@@ -12,6 +19,7 @@ Cloud Custodian has following key features:
 
 - Multi-cloud support e.g. AWS, GCP, Azure.
 
+---
 
 **c7n-mailer**
 
@@ -24,10 +32,13 @@ The _c7n-mailer directory structure:
 - environment/mailer.yml (used to specify mailer properties like SQS, SMTP details)
 ```
 
+---
+
 **templates**
 
 left it blank intentionally, you can create your own template or use default.
 
+---
 
 **support directory contains**
 
