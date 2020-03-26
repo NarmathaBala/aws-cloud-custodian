@@ -1,0 +1,53 @@
+vars:
+  # Ideally this would be sourced from s3
+  # auto updated from organizations api
+  accounts: &accounts
+    - "XXXXXXXXXXXX"
+    - "XXXXXXXXXXXX"
+    
+  notify: &notify
+    type: notify
+    subject: "[AWS Policy] [Account: {{account_id}}] - found externally available resources"
+    violation_desc: "Resource accessible outside of tomarv2 or supported accounts"
+    slack_template: custom_slack
+    template: default.html
+    to:
+      - resource-owner
+      - varun.tomar@tomarv2.com
+    transport:
+      type: sns
+      topic: "arn:aws:sns:us-east-2:XXXXXXXXXX:custodian-mailer-notify"
+
+policies:
+  - name: cross-account-iam-role
+    resource: iam-role
+    region: us-east-2
+    description: |
+      Notify on resources for cross account IAM role.
+    mode: 
+      type: cloudtrail
+      role: "arn:aws:iam::{account_id}:role/Custodian"
+      events:
+        - event: IAMUser
+          source: iam.amazonaws.com
+          ids: requestParameters.groupName
+        - event: CreateRole
+          source: iam.amazonaws.com
+          ids: requestParameters.groupName
+        - event: SAMLUser
+          source: iam.amazonaws.com
+          ids: requestParameters.groupName
+        - event: AssumeRole
+          source: sts.amazonaws.com
+          ids: requestParameters.groupName
+    tags:
+      - security:external-access
+    filters:
+      - type: cross-account
+        whitelist: *accounts
+      - "tag:iam-exempt": absent
+      - "tag:security-exempt": absent
+    actions:
+      - *notify
+
+  

@@ -1,0 +1,49 @@
+vars:
+  notify: &notify
+    type: notify
+    subject: "[AWS Policy] [Account: {{account_id}}] - users have stale access keys"
+    violation_desc: "Stale access keys"
+    slack_template: custom_slack
+    template: default.html
+    to:
+      - varun.tomar@tomarv2.com
+    transport:
+      type: sns
+      topic: "arn:aws:sns:us-east-2:XXXXXXXXXX:custodian-mailer-notify"
+
+  weekly-rule: &weekly-mode
+    packages: [botocore, boto3, urllib3]
+    type: periodic
+    environment:
+      Variables:
+        C7N_CATCH_ERR: 'yes'
+    schedule: "cron(00 17 1 * ? *)"
+    tags:
+      App: Custodian
+    role: arn:aws:iam::{account_id}:role/Custodian
+    execution-options:
+      metrics_enabled: aws://?region=us-east-2
+
+policies:
+  - name: unused-access-keys
+    description: |
+      Notify on extant keys that have been unused for several months.
+    resource: iam-user
+    region: us-east-1
+    #mode: *weekly-mode
+    filters:
+      - type: credential
+        key: access_keys.last_used_date
+        value_type: age
+        value: 180
+        op: greater-than
+    actions:
+      - <<: *notify
+        subject: "[AWS Policy] [Account: {{account_id}}] - unused Access Key(s) over 180 days"
+        violation_desc: "unused Access Key(s) over 180 days"
+      # - type: remove-keys
+      #   disable: true
+      #   age: 180
+      # - type: remove-keys
+      #   age: 365
+

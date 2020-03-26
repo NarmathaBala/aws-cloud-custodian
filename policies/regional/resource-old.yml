@@ -1,0 +1,97 @@
+vars:
+  notify: &notify
+    type: notify
+    subject: "[AWS Policy] [Account: {{account_id}}] - found old resources"
+    violation_desc: "Old resources found"
+    slack_template: custom_slack
+    template: default.html
+    to:
+      - varun.tomar@tomarv2.com
+    transport:
+      type: sns
+      topic: "arn:aws:sns:us-east-2:XXXXXXXXXX:custodian-mailer-notify"
+  
+  weekly-rule: &weekly-mode
+    packages: [botocore, boto3, urllib3]
+    type: periodic
+    environment:
+      Variables:
+        C7N_CATCH_ERR: 'yes'
+    schedule: "cron(00 17 ? * FRI *)"
+    tags:
+      App: Custodian
+    role: arn:aws:iam::{account_id}:role/Custodian
+    execution-options:
+      metrics_enabled: aws://?region=us-east-2
+
+policies:
+  - name: old-instances
+    resource: ec2
+    mode: *weekly-mode
+    filters:
+      - type: instance-age
+        op: ge
+        days: 730
+      - "tag:instance-exempt": absent
+      - "tag:ec2-exempt": absent
+    actions:
+      - <<: *notify
+        subject: "[AWS Policy] [Account: {{account_id}}] - EC2 instance(s) running older than 2 years"
+        violation_desc: "EC2 instance(s) running older than 2 days"
+
+  - name: old-rds-snapshots
+    resource: rds-snapshot
+    mode: *weekly-mode
+    filters:
+      - type: age
+        op: ge
+        days: 180
+      - "tag:rds-snapshot-exempt": absent
+    actions:
+      - <<: *notify
+        subject: "[AWS Policy] [Account: {{account_id}}] - RDS snapshot(s) older than 6 months"
+        violation_desc: "RDS snapshot(s) older than 6 months"
+      - delete
+
+  - name: old-images
+    resource: ami
+    mode: *weekly-mode
+    filters:
+      - type: unused
+        value: true
+      - type: image-age
+        days: 365
+      - type: value
+        key: ImageId
+        op: ni
+        value_from:
+            url: s3://nonprod/ami-exception-list.txt
+            format: txt
+      - "tag:old-images-exempt": absent
+      - "tag:old-ami-exempt": absent
+      - "tag:ami-exempt": absent
+    description: |
+      Deregisters AMIs that are older than 1 year and delete their snapshots
+    actions:
+    - <<: *notify
+      subject: "[AWS Policy] [Account: {{account_id}}] AMI(s) older than 1 year"
+      violation_desc: "AMI(s) older than 1 year"
+    - type: deregister
+
+  - name: old-ebs-snapshots
+    resource: ebs-snapshot
+    mode: *weekly-mode
+    filters:
+      - type: age
+        op: ge
+        days: 365
+      - type: skip-ami-snapshots
+        value: true
+      - "tag:ebs-snapshot-exempt": absent
+    description: |
+      delete ebs-snapshots older than 1 year
+    actions:
+      - <<: *notify
+        subject: "[AWS Policy] [Account: {{account_id}}] EBS snapshot(s) older than 1 year"
+        violation_desc: "EBS snapshot(s) older than 1 year"
+      - delete

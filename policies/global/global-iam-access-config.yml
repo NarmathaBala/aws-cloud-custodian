@@ -1,0 +1,155 @@
+# Find users who have access to blacklisted permissions
+# with api keys, and remove those keys and notify.
+#
+#
+#
+
+vars:
+  permission-checker: &perm-checker
+    type: check-permissions
+    match-operator: or
+    match: allowed
+    actions: [
+      "s3:PutAccountPublicAccessBlock",
+      "s3:PutBucketPublicAccessBlock",
+      "iam:DeactivateMFADevice",
+      "iam:CreateServiceSpecificCredential",
+      "iam:DeleteAccessKey",
+      "iam:DeleteGroup",
+      "iam:UpdateOpenIDConnectProviderThumbprint",
+      "iam:CreateAccountAlias",
+      "iam:DeleteServerCertificate",
+      "iam:DeleteOpenIDConnectProvider",
+      "iam:UpdateLoginProfile",
+      "iam:UpdateServiceSpecificCredential",
+      "iam:RemoveClientIDFromOpenIDConnectProvider",
+      "iam:UpdateRoleDescription",
+      "iam:UpdateAccessKey",
+      "iam:UpdateSSHPublicKey",
+      "iam:UpdateServerCertificate",
+      "iam:DeleteSigningCertificate",
+      "iam:UpdateAccountPasswordPolicy",
+      "iam:DeleteServiceLinkedRole",
+      "iam:ResetServiceSpecificCredential",
+      "iam:DeleteSSHPublicKey",
+      "iam:CreateVirtualMFADevice",
+      "iam:CreateSAMLProvider",
+      "iam:CreateUser",
+      "iam:CreateAccessKey",
+      "iam:PassRole",
+      "iam:DeleteAccountAlias",
+      "iam:UpdateSAMLProvider",
+      "iam:DeleteLoginProfile",
+      "iam:DeleteInstanceProfile",
+      "iam:UploadSigningCertificate",
+      "iam:DeleteUser",
+      "iam:CreateOpenIDConnectProvider",
+      "iam:UploadServerCertificate",
+      "iam:UntagUser",
+      "iam:CreateServiceLinkedRole",
+      "iam:DeleteVirtualMFADevice",
+      "iam:UpdateSigningCertificate",
+      "iam:AddClientIDToOpenIDConnectProvider",
+      "iam:DeleteServiceSpecificCredential",
+      "iam:DeleteSAMLProvider"]
+
+  notify: &notify
+    type: notify
+    subject: "[AWS Policy] [Account: {{account_id}}] - found problem"
+    violation_desc: "Resource accessible outside of tomarv2 or supported accounts"
+    slack_template: custom_slack
+    template: default.html
+    to:
+      - https://hooks.slack.com/services/XXXXXXXXXX/XXXXXXXXXX
+    transport:
+      type: sns
+      topic: "arn:aws:sns:us-east-2:XXXXXXXXXX:custodian-mailer-notify"
+      
+  key-checker: &key-checker
+    type: access-key 
+    key: Status
+    value: Active
+
+  config-rule: &config-mode
+    type: config-rule
+    environment:
+      Variables:
+        C7N_CATCH_ERR: 'yes'
+    role: "arn:aws:iam::{account_id}:role/Custodian"
+    tags:
+      App: Custodian
+    execution-options:
+      metrics_enabled: aws://?region=us-east-2
+
+  daily-rule: &daily-mode
+    packages: [botocore, boto3, urllib3]
+    type: periodic
+    environment:
+      Variables:
+        C7N_CATCH_ERR: 'yes'
+    schedule: "cron(00 17 1 * ? *)"
+    tags:
+      App: Custodian
+    role: arn:aws:iam::{account_id}:role/Custodian
+    execution-options:
+      metrics_enabled: aws://?region=us-east-2
+
+policies:
+  # Check any group events that users may be part of
+  - name: audit-group-access
+    description: "Checks for overly privileged groups"
+    resource: iam-group
+    region: us-east-2
+    tags:
+      - security:iam
+      - security:privilege
+    mode: *config-mode
+    filters:
+      - *perm-checker
+      - "tag:groupaccess-exempt": absent
+      - "tag:group-access-exempt": absent
+      - "tag:security-exempt": absent
+    actions:
+      - *notify
+
+  - name: audit-user-access
+    description: "Check for overly privileged users with access keys"
+    resource: iam-user
+    region: us-east-2
+    tags:
+      - security:iam
+      - security:privilege
+    mode: *config-mode
+    filters:
+      - *key-checker
+      - *perm-checker
+      - "tag:useraccess-exempt": absent
+      - "tag:user-access-exempt": absent
+      - "tag:security-exempt": absent
+    actions:
+      - <<: *notify
+        subject: "[AWS Policy] [Account: {{account_id}}] - User has overly privileged access"
+        violation_desc: "User has overly privileged access"
+
+  - name: audit-user-unused
+    description: "Check for user accounts that haven't been used in 365 days"
+    resource: iam-user
+    region: us-east-2
+    tags:
+      - security:iam
+      - security:unused
+    mode: *daily-mode
+    filters:
+      - type: usage
+        match-operator: all
+        LastAuthenticated:
+          type: value
+          value_type: age
+          value: 365
+          op: ge
+      - "tag:user-unused-exempt": absent
+      - "tag:userunused-exempt": absent
+    actions:
+      - <<: *notify
+        subject: "[AWS Policy] [Account: {{account_id}}] - User accounts have not been accessed 365 days"
+        violation_desc: "Users have not accessed the account for 365 days"

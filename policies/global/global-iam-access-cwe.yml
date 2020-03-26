@@ -1,0 +1,170 @@
+# Find users who have access to blacklisted permissions
+# with api keys, and remove those keys and notify.
+#
+#
+#
+vars:
+  permission-checker: &perm-checker
+    type: check-permissions
+    match-operator: or
+    match: allowed
+    actions: [
+      "s3:PutAccountPublicAccessBlock",
+      "s3:PutBucketPublicAccessBlock",
+      "iam:DeactivateMFADevice",
+      "iam:CreateServiceSpecificCredential",
+      "iam:DeleteAccessKey",
+      "iam:DeleteGroup",
+      "iam:UpdateOpenIDConnectProviderThumbprint",
+      "iam:CreateAccountAlias",
+      "iam:DeleteServerCertificate",
+      "iam:DeleteOpenIDConnectProvider",
+      "iam:UpdateLoginProfile",
+      "iam:UpdateServiceSpecificCredential",
+      "iam:RemoveClientIDFromOpenIDConnectProvider",
+      "iam:UpdateRoleDescription",
+      "iam:UpdateAccessKey",
+      "iam:UpdateSSHPublicKey",
+      "iam:UpdateServerCertificate",
+      "iam:DeleteSigningCertificate",
+      "iam:UpdateAccountPasswordPolicy",
+      "iam:DeleteServiceLinkedRole",
+      "iam:ResetServiceSpecificCredential",
+      "iam:DeleteSSHPublicKey",
+      "iam:CreateVirtualMFADevice",
+      "iam:CreateSAMLProvider",
+      "iam:CreateUser",
+      "iam:CreateAccessKey",
+      "iam:PassRole",
+      "iam:DeleteAccountAlias",
+      "iam:UpdateSAMLProvider",
+      "iam:DeleteLoginProfile",
+      "iam:DeleteInstanceProfile",
+      "iam:UploadSigningCertificate",
+      "iam:DeleteUser",
+      "iam:CreateOpenIDConnectProvider",
+      "iam:UploadServerCertificate",
+      "iam:UntagUser",
+      "iam:CreateServiceLinkedRole",
+      "iam:DeleteVirtualMFADevice",
+      "iam:UpdateSigningCertificate",
+      "iam:AddClientIDToOpenIDConnectProvider",
+      "iam:DeleteServiceSpecificCredential",
+      "iam:DeleteSAMLProvider"]
+
+  key-checker: &key-checker
+    type: access-key 
+    key: Status
+    value: Active
+
+  notify: &notify
+    type: notify
+    subject: "[AWS Policy] [Account: {{account_id}}] - Access Key violates permission policy"
+    violation_desc: "Overly privileged access"
+    slack_template: custom_slack
+    template: default.html
+    to:
+      - https://hooks.slack.com/services/XXXXXXXXXX/XXXXXXXXXX
+      - test-email@tomarv2.com
+    transport:
+      type: sns
+      topic: "arn:aws:sns:us-east-2:XXXXXXXXXX:custodian-mailer-notify"
+  
+  allowed-groups: &allowed-groups
+    type: value
+    key: GroupName
+    op: not-in
+    value_type: swap
+    value:
+      - Adminstrators
+      - SecurityTeam
+       
+  allowed-users: &allowed-users
+    type: value
+    key: UserName
+    op: not-in
+    value_type: swap
+    value:
+      - admin
+      - spinnaker-s3 
+
+policies:
+  # Check any group events that users may be part of
+  - name: access-check-group-event
+    description: "Checks for overly privileged groups"
+    resource: iam-group
+    tags:
+      - security:iam
+      - security:privilege
+    mode:
+      type: cloudtrail
+      role: "arn:aws:iam::{account_id}:role/Custodian"
+      events:
+        - event: PutGroupPolicy
+          source: iam.amazonaws.com
+          ids: requestParameters.groupName
+        - event: AttachGroupPolicy
+          source: iam.amazonaws.com
+          ids: requestParameters.groupName
+    filters:
+      - *allowed-groups
+      - *perm-checker
+      - "tag:accesscheck-exempt": absent
+      - "tag:access-check-exempt": absent
+      - "tag:security-exempt": absent
+    actions:
+      - *notify
+  
+  # Check on any user events that create access keys or
+  # modify a user's permissions.
+  - name: access-check-user-event
+    resource: iam-user
+    tags:
+      - security:iam
+      - security:privilege
+    mode:
+      type: cloudtrail
+      role: "arn:aws:iam::{account_id}:role/Custodian"
+      events:
+        - event: CreateAccessKey
+          source: iam.amazonaws.com
+          ids: requestParameters.userName
+        - event: AttachUserPolicy
+          source: iam.amazonaws.com
+          ids: requestParameters.userName
+        - event: AddUserToGroup
+          source: iam.amazonaws.com
+          ids: requestParameters.userName
+        - event: PutUserPolicy
+          source: iam.amazonaws.com
+          ids: requestParameters.userName
+    filters:
+      - *allowed-users
+      - *key-checker
+      - *perm-checker
+      - "tag:accesscheck-exempt": absent
+      - "tag:access-check-exempt": absent
+      - "tag:security-exempt": absent
+    actions:
+      - *notify
+
+  # Periodic Sweep across users
+  # - name: access-check-periodic-user
+  #   resource: iam-user
+  #   tags:
+  #     - security:iam
+  #     - security:privilege
+  #   mode:
+  #     type: periodic
+  #     schedule: "rate(1 day)"
+  #     role: "arn:aws:iam::{account_id}:role/Custodian"
+  #     timeout: 900
+  #   filters:
+  #     - *allowed-users
+  #     - *key-checker
+  #     - *perm-checker
+  #   actions:
+  #     - *notify
+  #     - type: tag
+  #       tags:
+  #         Custodian: Notified

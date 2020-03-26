@@ -1,0 +1,97 @@
+vars:
+  execution-options:
+    tracer: true
+    metrics_enabled: aws://?region=us-east-2
+policies:
+- name: auto-owner-ami
+  resource: ami
+  mode:
+    type: cloudtrail
+    role: arn:aws:iam::{account_id}:role/Custodian
+    tags:
+      App: Custodian
+    events:
+    - ids: responseElements.imageId
+      event: CopyImage
+      source: ec2.amazonaws.com
+    - event: RegisterImage
+      ids: responseElements.imageId
+      source: ec2.amazonaws.com
+    - event: ImportImage
+      ids: responseElements.imageId
+      source: ec2.amazonaws.com
+    - event: CreateImage
+      ids: responseElements.imageId
+      source: ec2.amazonaws.com
+  filters:
+  - tag:Owner: absent
+  - type: event
+    key: detail.userIdentity.principalId
+    value: '@tomarv2.com'
+    op: contains
+  actions:
+  - type: auto-tag-user
+    tag: Owner
+
+- name: auto-owner-app-elb
+  resource: app-elb
+  mode:
+    type: cloudtrail
+    role: arn:aws:iam::{account_id}:role/Custodian
+    tags:
+      App: Custodian
+    events:
+    - event: CreateLoadBalancer
+      ids: responseElements.loadBalancers.loadBalancerArn
+      source: elasticloadbalancing.amazonaws.com
+  filters:
+  - tag:Owner: absent
+  - type: event
+    key: detail.userIdentity.principalId
+    value: '@tomarv2.com'
+    op: contains
+  actions:
+  - type: auto-tag-user
+    tag: Owner
+
+- name: auto-owner-ec2
+  resource: ec2
+  mode:
+    type: cloudtrail
+    role: arn:aws:iam::{account_id}:role/Custodian
+    tags:
+      App: Custodian
+    events:
+    - ids: responseElements.instancesSet.items[].instanceId
+      event: RunInstances
+      source: ec2.amazonaws.com
+  filters:
+  - tag:Owner: absent
+  - type: event
+    key: detail.userIdentity.principalId
+    value: '@tomarv2.com'
+    op: contains
+  actions:
+  - type: auto-tag-user
+    tag: Owner
+
+- name: auto-owner-asg
+  resource: asg
+  mode:
+    type: cloudtrail
+    role: arn:aws:iam::{account_id}:role/Custodian
+    tags:
+      App: Custodian
+    events:
+    - event: CreateAutoScalingGroup
+      ids: requestParameters.autoScalingGroupName
+      source: autoscaling.amazonaws.com
+  filters:
+  - tag:Owner: absent
+  - type: event
+    key: detail.userIdentity.principalId
+    value: '@tomarv2.com'
+    op: contains
+  actions:
+  - type: auto-tag-user
+    tag: Owner

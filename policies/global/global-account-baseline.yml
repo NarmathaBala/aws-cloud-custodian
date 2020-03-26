@@ -1,0 +1,247 @@
+vars:
+  notify: &notify
+    type: notify
+    subject: "[AWS Policy] [Account: {{account_id}}] - found problem"
+    violation_desc: "Policy created/updated with admin privileges"
+    slack_template: custom_slack
+    template: default.html
+    to:
+      - https://hooks.slack.com/services/XXXXXXXXXX/XXXXXXXXXX
+      - varun.tomar@tomarv2.com
+    transport:
+      type: sns
+      topic: "arn:aws:sns:us-east-2:XXXXXXXXXX:custodian-mailer-notify"
+
+policies:
+  # Policy with admin privileges attached to a group, role, or user
+  - name: iam-policy-notify-on-admin-policy-attachment
+    resource: iam-policy
+    mode:
+      type: cloudtrail
+      role: "arn:aws:iam::{account_id}:role/Custodian"
+      events:
+        - source: iam.amazonaws.com
+          event: AttachGroupPolicy
+          ids: "requestParameters.policyArn"
+        - source: iam.amazonaws.com
+          event: AttachRolePolicy
+          ids: "requestParameters.policyArn"
+        - source: iam.amazonaws.com
+          event: AttachUserPolicy
+          ids: "requestParameters.policyArn"
+    filters:
+      - or:
+        - type: has-allow-all # this looks for any other policy with * on * privileges
+        - type: value # this looks for the AWS-managed admin policy
+          key: PolicyName
+          value: AdministratorAccess
+      - "tag:admin-policy-exempt": absent
+      - "tag:security-exempt": absent
+    actions:
+      - <<: *notify
+        subject: "[AWS Policy] [Account: {{account_id}}] - Policy has admin privileges attached"
+        violation_desc: "Policy has admin policy attached"
+
+  # Policy created or updated with * on * permissions
+  - name: iam-policy-notify-on-admin-policy-creation
+    resource: iam-policy
+    mode:
+      type: cloudtrail
+      role: "arn:aws:iam::{account_id}:role/Custodian"
+      events:
+        - source: iam.amazonaws.com
+          event: CreatePolicy
+          ids: "responseElements.policy.arn"
+        - source: iam.amazonaws.com
+          event: CreatePolicyVersion
+          ids: "requestParameters.policyArn"
+    filters:
+      - type: has-allow-all
+      - "tag:admin-policy-exempt": absent
+      - "tag:security-exempt": absent
+    actions:
+      - <<: *notify
+        subject: "[AWS Policy] [Account: {{account_id}}] - Policy created/updated with admin privileges"
+        violation_desc: "Policy created/updated with admin privileges"
+
+  # MFA missing in root account
+  - name: account-root-mfa
+    description: |
+      Account missing root MFA
+    resource: account
+    region: us-east-2
+    filters:
+      - type: iam-summary
+        key: AccountMFAEnabled
+        value: 1
+        op: not-equal
+    mode:
+      type: cloudtrail
+      role: "arn:aws:iam::{account_id}:role/Custodian"
+      events:
+       - source: iam.amazonaws.com
+         event: DeactivateMFADevice
+         ids: "requestParameters.policyArn"
+       - source: iam.amazonaws.com
+         event: checkMfa
+         ids: "requestParameters.policyArn"
+       - source: iam.amazonaws.com
+         event: CreateVirtualMFADevice
+         ids: "requestParameters.policyArn"
+       - source: iam.amazonaws.com
+         event: DeleteVirtualMFADevice
+         ids: "requestParameters.policyArn"
+       - source: iam.amazonaws.com
+         event: DescribeDirectoryMFA
+         ids: "requestParameters.policyArn"
+       - source: iam.amazonaws.com
+         event: DisableDirectoryMFA
+         ids: "requestParameters.policyArn"
+       - source: iam.amazonaws.com
+         event: EnableDirectoryMFA
+         ids: "requestParameters.policyArn"
+       - source: iam.amazonaws.com
+         event: EnableMFADevice
+         ids: "requestParameters.policyArn"
+    actions:
+      - <<: *notify
+        subject: "[AWS Policy] [Account: {{account_id}}] - Account root user missing MFA"
+        violation_desc: "Account root user missing MFA"
+
+  # Account root api active
+  - name: account-root-api-keys
+    description:  |
+      Account has active root api keys
+    resource: account
+    region: us-east-2
+    filters:
+      - type: iam-summary
+        key: AccountAccessKeysPresent
+        value: 0
+        op: not-equal
+    mode:
+      type: cloudtrail
+      role: "arn:aws:iam::{account_id}:role/Custodian"
+      events:
+       - source: signin.amazonaws.com
+         event: DeactivateMFADevice
+         ids: "requestParameters.policyArn"
+    actions:
+      - <<: *notify
+        subject: "[AWS Policy] [Account: {{account_id}}] - root user has active api"
+        violation_desc: "root user has active api"
+
+  # Account AWS config enabled
+  - name: account-config-enabled
+    resource: account
+    region: us-east-2
+    filters:
+      - type: check-config
+        running: true
+        all-resources: true
+        global-resources: true
+      - type: value
+        key: "'c7n:config_channels'.s3BucketName"
+        value: tomarv2-audit-config
+        op: not-equal
+    mode:
+      type: cloudtrail
+      role: "arn:aws:iam::{account_id}:role/Custodian"
+      events:
+       - source: cloudtrail.amazonaws.com
+         event: UpdateTrail
+         ids: "requestParameters.policyArn"
+    actions:
+      - <<: *notify
+        subject: "[AWS Policy] [Account: {{account_id}}] - AWS config enabled"
+        violation_desc: "AWS config enabled"
+
+  # Account CloudTrail enabled
+  - name: account-trail-enabled
+    resource: account
+    region: us-east-2
+    filters:
+      - type: missing
+        policy:
+          resource: cloudtrail
+          name: default-trail
+          filters:
+            - S3BucketName: tomarv2-audit-cloudtrail
+            - IsMultiRegionTrail: true
+            - IncludeGlobalServiceEvents: true
+            - type: status
+              key: IsLogging
+              value: true
+    mode:
+      type: cloudtrail
+      role: "arn:aws:iam::{account_id}:role/Custodian"
+      events:
+       - source: cloudtrail.amazonaws.com
+         event: CreateTrail
+         ids: "requestParameters.policyArn"
+       - source: cloudtrail.amazonaws.com
+         event: DeleteTrail
+         ids: "requestParameters.policyArn"
+       - source: cloudtrail.amazonaws.com
+         event: DescribeTrails
+         ids: "requestParameters.policyArn"
+       - source: cloudtrail.amazonaws.com
+         event: GetTrailStatus
+         ids: "requestParameters.policyArn"
+       - source: cloudtrail.amazonaws.com
+         event: UpdateTrail
+         ids: "requestParameters.policyArn"
+    actions:
+      - <<: *notify
+        subject: "[AWS Policy] [Account: {{account_id}}] - CloudTrail enabled"
+        violation_desc: "CloudTrail enabled"
+
+  # s3 bucket public
+  - name: account-s3-public-block
+    resource: account
+    region: us-east-2
+    filters:
+      - or:
+        - type: s3-public-block
+          key: IgnorePublicAcls
+          value: true
+          op: not-equal
+        - type: s3-public-block
+          key: BlockPublicPolicy
+          value: true
+          op: not-equal
+      - "tag:s3-public-exempt": absent
+      - "tag:s3public-exempt": absent
+      - "tag:security-exempt": absent
+    mode:
+      type: cloudtrail
+      role: "arn:aws:iam::{account_id}:role/Custodian"
+      events:
+       - source: s3.amazonaws.com
+         event: PutBucketPublicAccessBlock
+         ids: "requestParameters.policyArn"
+    actions:
+    - <<: *notify
+      subject: "[AWS Policy] [Account: {{account_id}}] - S3 public access enabled"
+      violation_desc: "S3 public access enabled"
+ 
+  # GuardDuty enabled
+  - name: account-guard-duty-enabled
+    resource: account
+    region: us-east-2
+    filters:
+      - type: guard-duty
+        match-operator: or
+        Detector.Status:
+          op: not-equal
+          value: ENABLED
+        Master.AccountId:
+          op: not-equal
+          value: "XXXXXXXXXXXX"
+        Master.RelationshipStatus:
+          op: not-equal
+          value: Enabled
+    actions:
+    - <<: *notify
+      subject: "[AWS Policy] [Account: {{account_id}}] - GuardDuty enabled"
+      violation_desc: "GuardDuty enabled"

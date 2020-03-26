@@ -1,0 +1,57 @@
+vars:
+  execution-options:
+    tracer: true
+    metrics_enabled: aws://?region=us-east-2
+policies:
+- name: auto-owner-iam-role
+  resource: iam-role
+  mode:
+    type: cloudtrail
+    role: arn:aws:iam::{account_id}:role/Custodian
+    tags:
+      App: Custodian
+    events:
+    - event: CreateRole
+      ids: requestParameters.roleName
+      source: iam.amazonaws.com
+    packages:
+    - boto3
+    - botocore
+    - urllib3
+  region: us-east-2
+  filters:
+  - tag:Owner: absent
+  - type: event
+    key: detail.userIdentity.principalId
+    value: '@tomarv2.com'
+    op: contains
+  actions:
+  - type: auto-tag-user
+    tag: Owner
+    
+- name: auto-owner-iam-user
+  resource: iam-user
+  mode:
+    type: cloudtrail
+    role: arn:aws:iam::{account_id}:role/Custodian
+    tags:
+      App: Custodian
+    events:
+    - event: CreateUser
+      ids: requestParameters.userName
+      source: iam.amazonaws.com
+    packages:
+    - boto3
+    - botocore
+    - urllib3
+  region: us-east-2
+  filters:
+  - tag:Owner: absent
+  - type: event
+    key: detail.userIdentity.principalId
+    value: '@tomarv2.com'
+    op: contains
+  actions:
+  - type: auto-tag-user
+    tag: Owner
+

@@ -1,0 +1,43 @@
+vars:
+  notify: &notify
+    type: notify
+    subject: "[AWS Policy] [Account: {{account_id}}] - hitting accounts limits"
+    violation_desc: "problem found"
+    #slack_template: custom_slack
+    template: default.html
+    to:
+      - varun.tomar@tomarv2.com
+    transport:
+      type: sns
+      topic: "arn:aws:sns:us-east-2:XXXXXXXXXX:custodian-mailer-notify"
+
+  weekly-rule: &weekly-mode
+    packages: [botocore, boto3, urllib3]
+    type: periodic
+    environment:
+      Variables:
+        C7N_CATCH_ERR: 'yes'
+    schedule: "cron(00 10 ? * MON *)"
+    tags:
+      App: Custodian
+    role: arn:aws:iam::{account_id}:role/Custodian
+    execution-options:
+      metrics_enabled: aws://?region=us-east-2
+
+policies:
+  - name: account-limits
+    resource: account
+    comment: Monitor account limits
+    filters:
+      - type: service-limit
+        threshold: 50
+        services:
+         - EC2
+         - ELB
+         - VPC
+         - AutoScaling
+         - RDS
+         - EBS
+         - SES
+    # actions:
+    #   - *notify

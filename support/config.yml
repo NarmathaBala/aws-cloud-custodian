@@ -1,0 +1,13 @@
+mugc_script: 'https://raw.githubusercontent.com/cloud-custodian/cloud-custodian/master/tools/ops/mugc.py'
+
+master_account_arn: 'arn:aws:iam::XXXXXXXXXXXXXXX:role/MainAccountAdminAccess'
+
+nonprod:
+    compliance_policies_dir: /aws-cloud-custodian/policies/compliance/nonprod/common
+    opertional_policies_dir: /aws-cloud-custodian/policies/operations/nonprod/common
+    account_list: '/aws-cloud-custodian/base/provisioning/nonprod/accounts.yml'
+  
+prod:
+    compliance_policies_dir: /aws-cloud-custodian/policies/compliance/prod/common
+    opertional_policies_dir: /aws-cloud-custodian/policies/operations/prod/common
+    account_list: '/aws-cloud-custodian/base/provisioning/prod/accounts.yml'

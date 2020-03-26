@@ -1,0 +1,85 @@
+#
+# Garbage collect unused
+#
+vars:
+  metrics-filters: &dbconn-metrics
+    type: metrics
+    name: DatabaseConnections
+    days: 90
+    value: 0
+    statistics: Sum
+    op: equal
+
+  notify: &notify
+    type: notify
+    subject: "[AWS Policy] [Account: {{account_id}}] - found unused resources"
+    violation_desc: "Found unsed resources"
+    slack_template: custom_slack
+    template: default.html
+    to:
+      - test-email@tomarv2.com
+    transport:
+      type: sns
+      topic: "arn:aws:sns:us-east-2:XXXXXXXXXX:custodian-mailer-notify"
+  
+  weekly-rule: &weekly-mode
+    packages: [botocore, boto3, urllib3]
+    type: periodic
+    environment:
+      Variables:
+        C7N_CATCH_ERR: 'yes'
+    schedule: "cron(00 17 1 * ? *)"
+    tags:
+      App: Custodian
+    role: arn:aws:iam::{account_id}:role/Custodian
+    execution-options:
+      metrics_enabled: aws://?region=us-east-2
+
+policies:
+  - name: unused-redshift
+    resource: redshift
+    mode: *weekly-mode
+    tags:
+      - cost:unused
+    filters:
+      - "tag:CustodianUnused": absent
+      - type: value
+        value_type: age
+        key: ClusterCreateTime
+        value: 90
+        op: greater-than
+      - <<: *dbconn-metrics
+    actions:
+      - *notify
+             
+  - name: unused-rds
+    resource: rds
+    mode: *weekly-mode
+    tags:
+      - cost:unused
+    filters:
+      - "tag:CustodianUnused": absent
+      - type: value
+        value_type: age
+        key: InstanceCreateTime
+        value: 90
+        op: greater-than
+      - <<: *dbconn-metrics
+    actions:
+      - *notify
+
+  - name: unused-kinesis
+    resource: kinesis
+    mode: *weekly-mode
+    tags:
+      - cost:unused
+    filters:
+      - "tag:CustodianUnused": absent
+      - type: metrics
+        name: GetRecords.Bytes
+        statistics: Sum
+        days: 3
+        op: lte
+        value: 10000
+    actions:
+      - *notify

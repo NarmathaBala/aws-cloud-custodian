@@ -1,0 +1,28 @@
+vars:
+  daily-rule: &daily-mode
+    packages: [botocore, boto3, urllib3]
+    type: periodic
+    environment:
+      Variables:
+        C7N_CATCH_ERR: 'yes'
+    schedule: "cron(00 13 ? * MON-FRI *)"
+    tags:
+      App: Custodian
+    role: arn:aws:iam::{account_id}:role/Custodian
+    execution-options:
+      metrics_enabled: aws://?region=us-east-2
+
+policies:
+  - name: cloudwatch-set-log-group-retention
+    resource: log-group
+    mode: *daily-mode
+    tags:
+      - security:cleanup
+    filters:
+      - type: value
+        key: logGroupName
+        op: regex
+        value: ^\/aws\/lambda\/custodian\-.+$
+    actions:
+      - type: retention
+        days: 3

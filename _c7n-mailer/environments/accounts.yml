@@ -1,0 +1,22 @@
+# c7n-org config file
+
+accounts:
+  # root
+  - name: "account_a"
+    account_id: "XXXXXXXXXXX"
+    email: account_a@tomarv2.com
+    role:
+      - arn:aws:iam::XXXXXXXXXXX:role/MainAccountAdminAccess
+      - arn:aws:iam::XXXXXXXXXXX:role/SlaveCentralAdmin
+    tags:
+      - env:nonprod
+
+  # root
+  - name: "account_b"
+    account_id: "XXXXXXXXXXX"
+    email: account_b@tomarv2.com
+    role:
+      - arn:aws:iam::XXXXXXXXXXX:role/MainAccountAdminAccess
+      - arn:aws:iam::XXXXXXXXXXX:role/SlaveCentralAdmin
+    tags:
+      - env:nonprod
