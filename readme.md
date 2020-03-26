@@ -23,7 +23,7 @@ Cloud Custodian provides the following features:
 
 **c7n-mailer**
 
-Its used to send outbound mail delivery.
+Outbound mail delivery.
 
 The _c7n-mailer directory structure:
 ```
@@ -34,12 +34,12 @@ The _c7n-mailer directory structure:
 
 ---
 
-**templates**
+**Templates**
 
 left it blank intentionally, you can create your own template or use default.
 
 ---
 
-**support directory contains**
+**Support directory contains**
 
 some handy script that I used to debug the deployment and extra stuff
