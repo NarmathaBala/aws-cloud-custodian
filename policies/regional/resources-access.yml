@@ -189,3 +189,63 @@ policies:
       - <<: *notify
         subject: "[AWS Policy] [Account: {{account_id}}] - rds-snapshot alert"
         violation_desc: "Recently created rds-snapshot may be open to public"
+
+  - name: cross-account-s3-create-block
+    resource: s3
+    tags:
+      - security:external-access
+    mode:
+      type: cloudtrail
+      role: "arn:aws:iam::{account_id}:role/CustodianGuard"
+      events:
+        - event: CreateBucket
+          source: s3.amazonaws.com
+          ids: "requestParameters.bucketName"
+        - event: PutBucketPublicAccessBlock
+          source: s3.amazonaws.com
+          ids: "requestParameters.bucketName"
+    filters:
+      - "tag:security-exception": absent
+      - type: value
+        key: Name
+        value_type: normalize
+        op: regex
+        value: '^((?!(varun|tomar)).)*$'
+    actions:
+      - type: notify
+        subject: "[AWS Policy] [Account: {{account_id}}] S3 Block public access has been enabled!"
+        violation_desc: " S3 Block public access has been enabled"
+        slack_template: custom_slack
+        template: default.html
+        to:
+          - varun.tomar@databricks.com
+        transport:
+          type: sns
+          topic: "arn:aws:sns:us-east-2:XXXXXXXXXX:custodian-mailer-notify"
+      - type: invoke-lambda
+        function: c7n-s3-public-block
+        async: true
+        region: us-east-2
+
+  - name: cross-account-s3-block
+    resource: s3
+    tags:
+      - security:external-access
+    mode:
+      type: cloudtrail
+      role: "arn:aws:iam::{account_id}:role/CustodianGuard"
+      events:
+        - event: DeleteBucketPublicAccessBlock
+          source: s3.amazonaws.com
+          ids: "requestParameters.bucketName"
+    filters:
+      - "tag:security-exception": absent
+      - "tag:temp-security-exception": absent
+    actions:
+      - <<: *notify
+        subject: "[AWS Policy] [Account: {{account_id}}] S3 Block public access has been enabled!"
+        violation_desc: " S3 Block public access has been enabled
+      - type: invoke-lambda
+        function: c7n-s3-public-block
+        async: true
+        region: us-east-2
