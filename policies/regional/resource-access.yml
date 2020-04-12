@@ -210,7 +210,7 @@ policies:
         key: Name
         value_type: normalize
         op: regex
-        value: '^((?!(varun|tomar)).)*$'
+        value: '^((?!(demo1|demo2)).)*$'
     actions:
       - type: notify
         subject: "[AWS Policy] [Account: {{account_id}}] S3 Block public access has been enabled!"
