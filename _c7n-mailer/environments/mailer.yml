@@ -1,13 +1,13 @@
 #SQS queue URL
 queue_url: https://sqs.us-east-2.amazonaws.com/XXXXXXXXXXX/custodian-mailer
 
-# from_address: nonprod-cloud-custodian@tomarv2.com
+# from_address: nonprod-cloud-custodian@demo.com
 role: arn:aws:iam::XXXXXXXXXXX:role/custodian-mailer-role
 
 region: us-east-2
 ses_region: us-west-2
 
-slack_webhook: https://hooks.slack.com/services/T02G3/BM0vAkE
+slack_webhook: https://hooks.slack.com/services/T1234/1234
 
 # How should we deliver email
 smtp_server: "smtp.gmail.com"
@@ -15,16 +15,16 @@ smtp_port: 587
 
 # encrypted with kms ~ custodian-notify key
 smtp_password: "XXXXXXXXXX"
-smtp_username: "cloud.custodian@tomarv2.com"
+smtp_username: "cloud.custodian@demo.com"
 
 # Default from address
-from_address: "cloud.custodian@tomarv2.com"
+from_address: "cloud.custodian@demo.com"
 
 debug: true
 
 # if your usernames match email addresses you can set an org domain
 # here which is appended to the username to send to
-org_domain: tomarv2.com
+org_domain: demo.com
 
 # Tags that we should look at for email address information on resources.
 contact_tags:

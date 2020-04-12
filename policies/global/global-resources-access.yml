@@ -8,12 +8,12 @@ vars:
   notify: &notify
     type: notify
     subject: "[AWS Policy] [Account: {{account_id}}] - found externally available resources"
-    violation_desc: "Resource accessible outside of tomarv2 or supported accounts"
+    violation_desc: "Resource accessible outside of demo or supported accounts"
     slack_template: custom_slack
     template: default.html
     to:
       - resource-owner
-      - varun.tomar@tomarv2.com
+      - varun.tomar@demo.com
     transport:
       type: sns
       topic: "arn:aws:sns:us-east-2:XXXXXXXXXX:custodian-mailer-notify"

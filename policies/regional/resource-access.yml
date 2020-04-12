@@ -8,12 +8,12 @@ vars:
   notify: &notify
     type: notify
     subject: "[AWS Policy] [Account: {{account_id}}] - found externally available resources"
-    violation_desc: "Resource accessible outside of tomarv2 or supported accounts"
+    violation_desc: "Resource accessible outside of demo or supported accounts"
     slack_template: custom_slack
     template: default.html
     to:
       - resource-owner
-      - varun.tomar@tomarv2.com
+      - varun.tomar@demo.com
     transport:
       type: sns
       topic: "arn:aws:sns:us-east-2:XXXXXXXXXX:custodian-mailer-notify"
@@ -57,7 +57,7 @@ policies:
     actions:
       - <<: *notify
         subject: "[AWS Policy] [Account: {{account_id}}] - issue with EBS volume"
-        violation_desc: "Recently created EBS volume is accessible outside of tomarv2 or supported accounts"
+        violation_desc: "Recently created EBS volume is accessible outside of demo or supported accounts"
 
   - name: cross-account-s3
     resource: s3
@@ -85,7 +85,7 @@ policies:
     actions:
       - <<: *notify
         subject: "[AWS Policy] [Account: {{account_id}}] - issue with S3"
-        violation_desc: "Recently created S3 is accessible outside of tomarv2 or supported accounts"
+        violation_desc: "Recently created S3 is accessible outside of demo or supported accounts"
 
   - name: cross-account-s3-acl
     resource: s3
@@ -110,7 +110,7 @@ policies:
     actions:
       - <<: *notify
         subject: "[AWS Policy] [Account: {{account_id}}] - issue with S3"
-        violation_desc: "Recently created S3 is accessible outside of tomarv2 or supported accounts"
+        violation_desc: "Recently created S3 is accessible outside of demo or supported accounts"
 
   - name: cross-account-sns
     resource: sns
@@ -138,7 +138,7 @@ policies:
     actions:
       - <<: *notify
         subject: "[AWS Policy] [Account: {{account_id}}] - issue with SNS"
-        violation_desc: "Recently created SNS may be accessible outside of tomarv2 or supported accounts"
+        violation_desc: "Recently created SNS may be accessible outside of demo or supported accounts"
 
   - name: cross-account-sqs
     resource: sqs
@@ -218,7 +218,7 @@ policies:
         slack_template: custom_slack
         template: default.html
         to:
-          - varun.tomar@tomarv2.com
+          - varun.tomar@demo.com
         transport:
           type: sns
           topic: "arn:aws:sns:us-east-2:XXXXXXXXXX:custodian-mailer-notify"

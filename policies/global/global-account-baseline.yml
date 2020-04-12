@@ -7,7 +7,7 @@ vars:
     template: default.html
     to:
       - https://hooks.slack.com/services/XXXXXXXXXX/XXXXXXXXXX
-      - varun.tomar@tomarv2.com
+      - varun.tomar@demo.com
     transport:
       type: sns
       topic: "arn:aws:sns:us-east-2:XXXXXXXXXX:custodian-mailer-notify"
@@ -142,7 +142,7 @@ policies:
         global-resources: true
       - type: value
         key: "'c7n:config_channels'.s3BucketName"
-        value: tomarv2-audit-config
+        value: demo-audit-config
         op: not-equal
     mode:
       type: cloudtrail
@@ -166,7 +166,7 @@ policies:
           resource: cloudtrail
           name: default-trail
           filters:
-            - S3BucketName: tomarv2-audit-cloudtrail
+            - S3BucketName: demo-audit-cloudtrail
             - IsMultiRegionTrail: true
             - IncludeGlobalServiceEvents: true
             - type: status

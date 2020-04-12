@@ -56,7 +56,7 @@ vars:
   notify: &notify
     type: notify
     subject: "[AWS Policy] [Account: {{account_id}}] - found problem"
-    violation_desc: "Resource accessible outside of tomarv2 or supported accounts"
+    violation_desc: "Resource accessible outside of demo or supported accounts"
     slack_template: custom_slack
     template: default.html
     to:

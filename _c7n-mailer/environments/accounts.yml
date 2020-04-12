@@ -4,7 +4,7 @@ accounts:
   # root
   - name: "account_a"
     account_id: "XXXXXXXXXXX"
-    email: account_a@tomarv2.com
+    email: account_a@demo.com
     role:
       - arn:aws:iam::XXXXXXXXXXX:role/MainAccountAdminAccess
       - arn:aws:iam::XXXXXXXXXXX:role/SlaveCentralAdmin
@@ -14,7 +14,7 @@ accounts:
   # root
   - name: "account_b"
     account_id: "XXXXXXXXXXX"
-    email: account_b@tomarv2.com
+    email: account_b@demo.com
     role:
       - arn:aws:iam::XXXXXXXXXXX:role/MainAccountAdminAccess
       - arn:aws:iam::XXXXXXXXXXX:role/SlaveCentralAdmin

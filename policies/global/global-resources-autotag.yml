@@ -23,7 +23,7 @@ policies:
   - tag:Owner: absent
   - type: event
     key: detail.userIdentity.principalId
-    value: '@tomarv2.com'
+    value: '@demo.com'
     op: contains
   actions:
   - type: auto-tag-user
@@ -49,7 +49,7 @@ policies:
   - tag:Owner: absent
   - type: event
     key: detail.userIdentity.principalId
-    value: '@tomarv2.com'
+    value: '@demo.com'
     op: contains
   actions:
   - type: auto-tag-user

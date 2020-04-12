@@ -65,7 +65,7 @@ vars:
     template: default.html
     to:
       - https://hooks.slack.com/services/XXXXXXXXXX/XXXXXXXXXX
-      - test-email@tomarv2.com
+      - test-email@demo.com
     transport:
       type: sns
       topic: "arn:aws:sns:us-east-2:XXXXXXXXXX:custodian-mailer-notify"

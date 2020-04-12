@@ -6,7 +6,7 @@ vars:
     #slack_template: custom_slack
     template: default.html
     to:
-      - varun.tomar@tomarv2.com
+      - varun.tomar@demo.com
     transport:
       type: sns
       topic: "arn:aws:sns:us-east-2:XXXXXXXXXX:custodian-mailer-notify"
