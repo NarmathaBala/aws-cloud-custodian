@@ -13,7 +13,7 @@ vars:
     template: default.html
     to:
       - resource-owner
-      - varun.tomar@demo.com
+      - demo@demo.com
     transport:
       type: sns
       topic: "arn:aws:sns:us-east-2:XXXXXXXXXX:custodian-mailer-notify"
@@ -218,7 +218,7 @@ policies:
         slack_template: custom_slack
         template: default.html
         to:
-          - varun.tomar@demo.com
+          - demo@demo.com
         transport:
           type: sns
           topic: "arn:aws:sns:us-east-2:XXXXXXXXXX:custodian-mailer-notify"
